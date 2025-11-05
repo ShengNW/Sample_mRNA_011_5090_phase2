@@ -73,3 +73,4 @@ reports_unknow/
 # track only this YAML under configs
 configs/*.yaml
 !configs/train_cnn_regression_norm_000_3.yaml
+!configs/dataset.yaml
