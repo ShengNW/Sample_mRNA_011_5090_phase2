@@ -10,13 +10,11 @@ def main():
     sub = parser.add_subparsers(dest='cmd', required=True)
     p_run = sub.add_parser('run', help='train the model')
     p_run.add_argument('--config', type=str, required=True)
-    p_run.add_argument('--resume', type=str, default='')  # 可选：从 ckpt 继续
     args = parser.parse_args()
 
     if args.cmd == 'run':
         cfg = load_yaml(args.config)
-        #best = run_training(cfg)
-        best = run_training(cfg, resume=args.resume)
+        best = run_training(cfg)
         print('Best checkpoint at:', best)
 
 if __name__ == '__main__':

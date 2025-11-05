@@ -428,7 +428,8 @@ def evaluate(model, loader, device, criterion, task,
 
 
 
-def run_training(cfg: Dict[str, Any]):
+#def run_training(cfg: Dict[str, Any]):
+def run_training(cfg: Dict[str, Any], resume: Optional[str] = None):
     # --- 修改：启动标记 ---
     print("[stamp] train_loop v2025-11-04a, sampler=PartGroupedSampler, train.shuffle=cfg.train.shuffle")
 
@@ -541,9 +542,18 @@ def run_training(cfg: Dict[str, Any]):
         y_mean = y_mean_cpu.to(device)
         y_std  = y_std_cpu.to(device)
 
-    model = build_model(n_channels, cfg)
-    model.to(device)
-
+    #model = build_model(n_channels, cfg)
+    #model.to(device)
+    model = build_model(n_channels, cfg).to(device)
+    
+    # ====== 可选：从 checkpoint 继续训练 ======
+    resume_path = (cfg.get('train',{}) or {}).get('resume', None)
+    if resume is not None and len(str(resume).strip()) > 0:
+        resume_path = resume
+    if resume_path and os.path.exists(resume_path):
+        ckpt = torch.load(resume_path, map_location=device)
+        model.load_state_dict(ckpt['model'], strict=True)
+        print(f"[resume] loaded weights from {resume_path}")
     # --- 构造优化器：AdamW + BN/Norm/bias 不做权重衰减 ---
     optim_cfg = cfg.get('optim', {'optimizer':'adamw','lr':1e-3,'weight_decay':1e-2})
     optimizer = build_optimizer_with_bn_exclusion(model, optim_cfg)
