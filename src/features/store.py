@@ -1,24 +1,14 @@
 
 # -*- coding: utf-8 -*-
-"""
-FeatureStore: 统一加载三类“侧表”特征并按键回填。
-- organ_id → tissue_vec / rbp_vec
-- transcript_id → x_struct
-文件格式尽量宽容：支持 .npy、.json、.csv（第一列为键，其余列为向量）。
-"""
 from __future__ import annotations
+"""
+FeatureStore with organ_id type auto-detection (auto/int/str).
+"""
 import os, json, csv
-from typing import Dict, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional, Any, Literal
 import numpy as np
 
 def _load_kv_matrix(path: str) -> Tuple[Dict[Any, int], np.ndarray]:
-    """
-    返回 (key_to_row_index, matrix)；matrix shape=(N, D)
-    支持：
-      - .npy   : dict(keys=list, data=np.ndarray NxD)
-      - .json  : {"keys": [...], "data": [[...],[...],...]}
-      - .csv   : 第一列为键，其余列为浮点
-    """
     if not os.path.exists(path):
         raise FileNotFoundError(f"feature file not found: {path}")
     ext = os.path.splitext(path)[1].lower()
@@ -44,38 +34,56 @@ def _load_kv_matrix(path: str) -> Tuple[Dict[Any, int], np.ndarray]:
     key2row = {k:i for i,k in enumerate(keys)}
     return key2row, data
 
+def _try_all_int(keys) -> bool:
+    try:
+        for k in keys:
+            int(k)
+        return True
+    except Exception:
+        return False
+
 class FeatureStore:
-    def __init__(self, 
-                 tissue_path: Optional[str]=None,
-                 rbp_path: Optional[str]=None,
-                 struct_path: Optional[str]=None,
-                 organ_id_is_int: bool=True):
+    def __init__(self, tissue_path: Optional[str]=None, rbp_path: Optional[str]=None,
+                 struct_path: Optional[str]=None, organ_id_type: Literal["auto","int","str"]="auto"):
         self.tissue_key2row, self.tissue = ({}, None)
         self.rbp_key2row, self.rbp = ({}, None)
         self.struct_key2row, self.struct = ({}, None)
-        self.organ_id_is_int = organ_id_is_int
+        self._organ_id_type = organ_id_type
         if tissue_path:
             self.tissue_key2row, self.tissue = _load_kv_matrix(tissue_path)
         if rbp_path:
             self.rbp_key2row, self.rbp = _load_kv_matrix(rbp_path)
         if struct_path:
             self.struct_key2row, self.struct = _load_kv_matrix(struct_path)
+        # auto decide
+        if self._organ_id_type == "auto":
+            sample_keys = []
+            if self.tissue_key2row: sample_keys = list(self.tissue_key2row.keys())[:5]
+            elif self.rbp_key2row: sample_keys = list(self.rbp_key2row.keys())[:5]
+            self._organ_id_type = "int" if (sample_keys and _try_all_int(sample_keys)) else "str"
 
-    def get_tissue(self, organ_id) -> Optional[np.ndarray]:
+    def _norm_organ_key(self, organ_id):
+        if organ_id is None: return None
+        if self._organ_id_type == "int":
+            try: return int(organ_id)
+            except Exception: return str(organ_id)
+        return str(organ_id)
+
+    def get_tissue(self, organ_id):
         if self.tissue is None: return None
-        key = int(organ_id) if self.organ_id_is_int else str(organ_id)
+        key = self._norm_organ_key(organ_id)
         ridx = self.tissue_key2row.get(key, None)
         if ridx is None: return None
         return self.tissue[ridx]
 
-    def get_rbp(self, organ_id) -> Optional[np.ndarray]:
+    def get_rbp(self, organ_id):
         if self.rbp is None: return None
-        key = int(organ_id) if self.organ_id_is_int else str(organ_id)
+        key = self._norm_organ_key(organ_id)
         ridx = self.rbp_key2row.get(key, None)
         if ridx is None: return None
         return self.rbp[ridx]
 
-    def get_struct(self, transcript_id) -> Optional[np.ndarray]:
+    def get_struct(self, transcript_id):
         if self.struct is None: return None
         key = str(transcript_id)
         ridx = self.struct_key2row.get(key, None)
