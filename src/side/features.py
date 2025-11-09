@@ -1,5 +1,4 @@
 import gzip
-import math
 
 def load_utr_coords(gtf_path):
     """
@@ -18,7 +17,8 @@ def load_utr_coords(gtf_path):
     # We will gather UTR segments per transcript to choose best transcript per gene
     transcripts = {}  # transcript_id -> dict(gene, chr, strand, utr5_segments, utr3_segments)
     # Also gather gene full spans if gene lines present
-    with open(gtf_path, "r") as f:
+    opener = gzip.open if str(gtf_path).endswith((".gz", ".bgz")) else open
+    with opener(gtf_path, "rt") as f:
         for line in f:
             if line.startswith("#"):
                 continue

@@ -1,26 +1,17 @@
-# configs/train_rbp_trna.yaml
-gtf_file: data/external/ref/ensembl/Homo_sapiens.GRCh38.115.gtf.gz
-rbp_data_dir: data/external/rbp/encode_eclip          # 里面有 HepG2/、K562/ 子目录（只放 .bed.gz）
-trna_bed_file: data/external/trna/ensembl/tRNA.GRCh38.bed
-tissue_embedding_file: configs/tissue_embeddings.pkl
+# Training configuration for the FiLM-conditioned CNN with RBP/tRNA features
 
-# 现成的序列分片（保持你原仓库 processed 目录结构）
-train_shards: data/processed/seq_cnn_v1/shards
+dataset_dir: data/processed/seq_cnn_v1_rbp_trna
 
-# 开关
-include_rbp: true
-include_trna: true
-include_film: true
-
-# 训练&IO
 batch_size: 64
 num_workers: 8
-shuffle_buffer: 8192         # 只在单机内做 buffer shuffle，避免跨分片随机IO
-
-# 优化器/学习率（示例）
-epochs: 12
+epochs: 20
 learning_rate: 1.5e-3
 weight_decay: 1.0e-4
 
-# 输出模型
+conv_channels: [64, 128, 256]
+stem_channels: 32
+film_dim: 32
+hidden_dim: 256
+dropout: 0.2
+
 output_model_path: outputs/cnn_film_rbp_trna_best.pt
