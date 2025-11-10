@@ -475,11 +475,30 @@ def run(args: argparse.Namespace) -> None:
     organ_col = args.organ_col or dataset_cfg["colmap"].get("organ", "organ_id")
     utr5_col = args.utr5_col or dataset_cfg["colmap"].get("utr5", "utr5_seq")
     utr3_col = args.utr3_col or dataset_cfg["colmap"].get("utr3", "utr3_seq")
-    target_col = args.target_col or "y_value"
+    # Determine which column should be used as the regression target.  When the
+    # dataset config already specifies the mapping we prefer that, but fall back
+    # to a list of common column names so that older parquet exports continue to
+    # work without additional CLI flags.
+    colmap = dataset_cfg.get("colmap", {}) if isinstance(dataset_cfg, dict) else {}
+    target_col = args.target_col
+    if not target_col:
+        target_col = colmap.get("y_reg") or colmap.get("target") or colmap.get("label")
+    if not target_col:
+        for candidate in ("label_reg_log1p", "expr_value", "y", "y_value"):
+            if candidate in df.columns:
+                target_col = candidate
+                break
+    if not target_col:
+        raise KeyError(
+            "Could not determine target column. Pass --target-col explicitly or"
+            " set colmap.y_reg in the dataset config."
+        )
     split_col = args.split_col or dataset_cfg["colmap"].get("split", "split")
 
     if target_col not in df.columns:
-        raise KeyError(f"Target column '{target_col}' not found in dataset")
+        raise KeyError(
+            f"Target column '{target_col}' not found in dataset. Available columns: {list(df.columns)}"
+        )
     if organ_col not in df.columns:
         raise KeyError(f"Organ column '{organ_col}' not found in dataset")
     if utr5_col not in df.columns or utr3_col not in df.columns:
