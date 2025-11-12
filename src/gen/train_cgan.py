@@ -88,7 +88,11 @@ def _resolve_sdpa_context(device_type: str):
                 if math_backend is not None:
                     backends.append(math_backend)
                 if backends:
-                    kwargs["backends"] = tuple(backends)
+                    # Recent torch versions require an actual list of SDPBackend
+                    # instances instead of a tuple.  Passing a tuple triggers an
+                    # assertion error, so keep the container type aligned with
+                    # the expected API.
+                    kwargs["backends"] = backends
             elif "backend" in params and flash_backend is not None:
                 kwargs["backend"] = flash_backend
             return sdpa_factory(**kwargs)
