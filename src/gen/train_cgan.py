@@ -3,7 +3,7 @@ import argparse, contextlib, yaml
 from pathlib import Path
 import pandas as pd, torch
 try:
-    from torch.nn.attention import sdpa_kernel as sdp_kernel_ctx
+    from torch.nn.attention import sdpa_kernel as sdp_kernel_ctx, SDPBackend
 except ImportError:  # pragma: no cover - fallback for older torch
     sdp_kernel_ctx = None
 from torch.utils.data import DataLoader, Dataset
